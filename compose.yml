@@ -7,6 +7,3 @@ services:
       POSTGRES_DB: todos
     ports:
       - 5432:5432
-
-
-      
