@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const EventEmitter = require('events');
+const { createClient } = require('redis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +11,27 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 const alertEmitter = new EventEmitter();
+
+const redisUrl = process.env.REDIS_ADDON_URI || 'redis://localhost:6379';
+const pubClient = createClient({ url: redisUrl });
+const subClient = pubClient.duplicate();
+
+pubClient.on('error', (err) => console.error('Redis Pub Client Error', err));
+subClient.on('error', (err) => console.error('Redis Sub Client Error', err));
+
+(async () => {
+    await pubClient.connect();
+    await subClient.connect();
+    
+    await subClient.subscribe('todo_alerts', (message) => {
+        try {
+            const todo = JSON.parse(message);
+            alertEmitter.emit('todo_alert', todo);
+        } catch (e) {
+            console.error('Failed to handle incoming Redis message', e);
+        }
+    });
+})();
 
 const pool = new Pool({
     connectionString: process.env.POSTGRESQL_ADDON_URI,
@@ -186,7 +208,7 @@ app.post('/todos/:id/notify', async (req, res) => {
         const todo = rows[0];
         const listenersCount = alertEmitter.listenerCount('todo_alert');
         
-        alertEmitter.emit('todo_alert', todo);
+        await pubClient.publish('todo_alerts', JSON.stringify(todo));
 
         res.status(200).json({ 
             message: "Alerte envoyée", 
