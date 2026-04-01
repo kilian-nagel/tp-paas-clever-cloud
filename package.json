@@ -1,0 +1,13 @@
+{
+  "name": "todolist-node",
+  "version": "1.0.0",
+  "description": "Simple TodoList API in Node.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "pg": "^8.11.3"
+  }
+}
